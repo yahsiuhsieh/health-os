@@ -166,6 +166,11 @@ saving time and 08:00 during standard time. GitHub Actions schedules use UTC and
 start a few minutes after the configured time. `HEALTHOS_TIMEZONE` should remain
 `America/Chicago` so report dates align with this schedule.
 
+Manual GitHub Actions runs use the `operation` input. Choose `daily` to send the
+morning email, or `weekly` to run reconciliation and raw cleanup. For daily test runs,
+check `force_email` to run `healthos run --force` and resend even if today's email
+marker already exists. Scheduled daily runs do not force resend.
+
 Each report combines two date windows: sleep and recovery data from the report date
 (the sleep that ended that morning), plus complete activity data from the previous
 calendar day. The email prompt receives both daily metrics with their 7-day and 28-day

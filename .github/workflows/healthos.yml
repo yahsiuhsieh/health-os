@@ -11,6 +11,11 @@ on:
         options:
           - daily
           - weekly
+      force_email:
+        description: "Force daily email even if it was already sent"
+        required: false
+        default: false
+        type: boolean
   schedule:
     # GitHub cron is UTC: 09:00 Chicago daylight time, 08:00 standard time.
     - cron: "0 14 * * *"
@@ -41,7 +46,14 @@ jobs:
         with:
           python-version: "3.11"
       - name: Run HealthOS morning email
-        run: PYTHONPATH=src python -m healthos run
+        env:
+          FORCE_EMAIL: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_email == 'true' }}
+        run: |
+          if [[ "$FORCE_EMAIL" == "true" ]]; then
+            PYTHONPATH=src python -m healthos run --force
+          else
+            PYTHONPATH=src python -m healthos run
+          fi
 
   weekly-reconciliation:
     if: >-
