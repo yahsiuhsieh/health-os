@@ -17,6 +17,8 @@ GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 SUPPORTED_AI_PROVIDERS = {"openrouter", "openai", "rule_based"}
 LOCAL_ENV_FILES = (".env.local", ".env")
 ENV_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+DEFAULT_ACCOUNT_KEY = "personal"
+DEFAULT_AI_MAX_OUTPUT_TOKENS = 700
 
 
 def load_local_env(base_dir: str | os.PathLike[str] | None = None) -> None:
@@ -62,13 +64,6 @@ def _bool(name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
-def _int(name: str, default: int) -> int:
-    value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return default
-    return int(value)
 
 
 def _scopes() -> tuple[str, ...]:
@@ -119,10 +114,10 @@ class Settings:
             google_scopes=_scopes(),
             supabase_url=os.getenv("SUPABASE_URL", "").rstrip("/"),
             supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
-            account_key=os.getenv("HEALTHOS_ACCOUNT_KEY", "personal"),
+            account_key=DEFAULT_ACCOUNT_KEY,
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             openai_model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
-            ai_max_output_tokens=_int("AI_MAX_OUTPUT_TOKENS", 700),
+            ai_max_output_tokens=DEFAULT_AI_MAX_OUTPUT_TOKENS,
             ai_provider=_ai_provider(),
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
             openrouter_model=os.getenv("OPENROUTER_MODEL", "openrouter/free"),

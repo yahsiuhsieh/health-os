@@ -108,10 +108,11 @@ Optional variables:
 ```text
 AI_PROVIDER
 OPENROUTER_MODEL
-AI_MAX_OUTPUT_TOKENS
 HEALTHOS_TIMEZONE
-HEALTHOS_ACCOUNT_KEY
 ```
+
+For the personal MVP, HealthOS uses an internal account key of `personal` and
+caps AI output at 700 tokens. These are intentionally not runtime settings.
 
 For local development, copy `.env.example` to `.env.local` and fill in your local
 values. The CLI automatically loads `.env.local` and then `.env` before reading

@@ -33,9 +33,7 @@ jobs:
       AI_PROVIDER: ${{ vars.AI_PROVIDER || 'openrouter' }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openrouter/free' }}
-      AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS || '700' }}
       HEALTHOS_TIMEZONE: ${{ vars.HEALTHOS_TIMEZONE || 'America/Chicago' }}
-      HEALTHOS_ACCOUNT_KEY: ${{ vars.HEALTHOS_ACCOUNT_KEY || 'personal' }}
       GMAIL_FROM_EMAIL: ${{ secrets.GMAIL_FROM_EMAIL }}
       SUMMARY_RECIPIENT_EMAIL: ${{ secrets.SUMMARY_RECIPIENT_EMAIL }}
     steps:
@@ -64,7 +62,6 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       HEALTHOS_TIMEZONE: ${{ vars.HEALTHOS_TIMEZONE || 'America/Chicago' }}
-      HEALTHOS_ACCOUNT_KEY: ${{ vars.HEALTHOS_ACCOUNT_KEY || 'personal' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

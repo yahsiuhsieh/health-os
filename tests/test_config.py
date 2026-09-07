@@ -57,6 +57,7 @@ class LocalEnvTests(unittest.TestCase):
                 "GOOGLE_OAUTH_SCOPES",
                 "OPENROUTER_MODEL",
                 "AI_MAX_OUTPUT_TOKENS",
+                "HEALTHOS_ACCOUNT_KEY",
                 "SMTP_HOST",
                 "HEALTHOS_SEND_DRY_RUN",
             )
@@ -64,6 +65,8 @@ class LocalEnvTests(unittest.TestCase):
             try:
                 os.chdir(directory)
                 os.environ["GOOGLE_HEALTH_SCOPES"] = "legacy-scope"
+                os.environ["AI_MAX_OUTPUT_TOKENS"] = "9999"
+                os.environ["HEALTHOS_ACCOUNT_KEY"] = "other-account"
                 os.environ["SMTP_HOST"] = "smtp.example.com"
                 os.environ["HEALTHOS_SEND_DRY_RUN"] = "true"
                 settings = Settings.from_env()
@@ -74,6 +77,7 @@ class LocalEnvTests(unittest.TestCase):
         self.assertEqual(settings.ai_provider, "openrouter")
         self.assertEqual(settings.openrouter_model, "openrouter/free")
         self.assertEqual(settings.ai_max_output_tokens, 700)
+        self.assertEqual(settings.account_key, "personal")
         self.assertIn(GMAIL_SEND_SCOPE, settings.google_scopes)
         self.assertNotIn("legacy-scope", settings.google_scopes)
         self.assertFalse(hasattr(settings, "smtp_host"))
