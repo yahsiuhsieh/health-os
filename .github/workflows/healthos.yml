@@ -12,7 +12,7 @@ on:
           - daily
           - weekly
       force_email:
-        description: "Force daily email even if it was already sent"
+        description: "Force send daily email"
         required: false
         default: false
         type: boolean
