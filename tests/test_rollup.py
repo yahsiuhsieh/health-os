@@ -76,7 +76,13 @@ class RollupTests(unittest.TestCase):
         metric_date = date(2026, 6, 10)
         metric = RollupBuilder().build_for_dates([], [metric_date])[0]
         history = [
-            {"metric_date": "2026-06-09", "steps": 10000, "sleep_minutes_asleep": 400},
+            {
+                "metric_date": "2026-06-09",
+                "steps": 10000,
+                "sleep_minutes_asleep": 400,
+                "sleep_minutes_deep": 80,
+                "active_minutes_total": 70,
+            },
             {"metric_date": "2026-06-10", "steps": 50000, "sleep_minutes_asleep": 100},
         ]
 
@@ -84,6 +90,8 @@ class RollupTests(unittest.TestCase):
 
         self.assertEqual(metric.baseline_7d["sample_count"], 1)
         self.assertEqual(metric.baseline_7d["averages"]["steps"], 10000)
+        self.assertEqual(metric.baseline_7d["averages"]["sleep_minutes_deep"], 80)
+        self.assertEqual(metric.baseline_7d["averages"]["active_minutes_total"], 70)
 
     def test_google_sleep_stage_and_weight_shapes_roll_up(self) -> None:
         metric_date = date(2026, 8, 9)
@@ -150,16 +158,6 @@ class RollupTests(unittest.TestCase):
 
         self.assertFalse(metric.data_quality["has_sleep"])
         self.assertIsNone(metric.readiness_score)
-
-    def test_partial_day_rollup_sets_as_of(self) -> None:
-        metric_date = date(2026, 6, 2)
-        as_of = datetime(2026, 6, 2, 21, 30, tzinfo=timezone.utc)
-
-        metric = RollupBuilder().build_for_dates([], [metric_date], partial_day_as_of=as_of)[0]
-
-        self.assertEqual(metric.partial_day_as_of, as_of)
-        self.assertTrue(metric.data_quality["partial_day"])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 [project]
 name = "healthos"
 version = "0.1.0"
-description = "Personal Google Health data sync and twice-daily AI coach email pipeline."
+description = "Personal Google Health data sync and daily morning AI coach email pipeline."
 requires-python = ">=3.11"
 dependencies = []
 
@@ -21,4 +21,3 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-

@@ -17,7 +17,7 @@ class EmailSenderTests(unittest.TestCase):
         settings = _settings()
 
         delivered = EmailSender(settings, http=http, oauth=oauth).send(
-            subject="HealthOS Morning Recovery - 2026-09-07",
+            subject="HealthOS 晨間健康摘要 - 2026-09-07",
             body="plain body",
             html_body="<html><body>html body</body></html>",
         )

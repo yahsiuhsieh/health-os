@@ -22,14 +22,13 @@ class SupabaseStorageTests(unittest.TestCase):
         self.assertIn("metric_date=lt.2026-08-08", call["url"])
         self.assertEqual(call["headers"]["Prefer"], "return=representation")
 
-    def test_mark_email_sent_records_ai_provider_and_model(self) -> None:
+    def test_mark_morning_email_sent_records_ai_provider_and_model(self) -> None:
         http = FakeHttp({})
         storage = SupabaseStorage(_settings(), http)
 
-        storage.mark_email_sent(
+        storage.mark_morning_email_sent(
             "account-id",
             date(2026, 9, 6),
-            "morning",
             "hash",
             ai_provider="openrouter",
             ai_model="openrouter/free",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from statistics import mean
 from typing import Any
 
@@ -11,13 +11,20 @@ from healthos.utils import first_number, minutes_between, number, recursive_nume
 
 BASELINE_FIELDS = (
     "sleep_minutes_asleep",
+    "sleep_minutes_deep",
+    "sleep_minutes_rem",
     "sleep_efficiency",
     "hrv_rmssd_ms",
     "resting_hr_bpm",
     "respiratory_rate_bpm",
     "spo2_avg_pct",
+    "sleep_temp_delta_c",
     "steps",
     "active_zone_minutes",
+    "active_minutes_total",
+    "active_minutes_light",
+    "active_minutes_moderate",
+    "active_minutes_vigorous",
     "exercise_minutes",
     "sedentary_minutes",
 )
@@ -28,8 +35,6 @@ class RollupBuilder:
         self,
         records: list[HealthRecord],
         dates: list[date],
-        *,
-        partial_day_as_of: datetime | None = None,
     ) -> list[DailyMetric]:
         by_date: dict[date, list[HealthRecord]] = defaultdict(list)
         for record in records:
@@ -41,8 +46,6 @@ class RollupBuilder:
             metric = DailyMetric(metric_date=metric_date)
             for record in by_date.get(metric_date, []):
                 self.apply_record(metric, record)
-            if partial_day_as_of and metric_date == partial_day_as_of.date():
-                metric.partial_day_as_of = partial_day_as_of
             metric.data_quality = self.data_quality(metric)
             metric.readiness_score = self.readiness_score(metric)
             metric.strain_score = self.strain_score(metric)
@@ -189,7 +192,6 @@ class RollupBuilder:
                     metric.exercise_minutes,
                 )
             ),
-            "partial_day": metric.partial_day_as_of is not None,
         }
 
     def readiness_score(self, metric: DailyMetric) -> float | None:
@@ -245,13 +247,13 @@ def attach_baselines(metric: DailyMetric, history_rows: list[dict[str, Any]]) ->
     return metric
 
 
-def should_send_email(row: dict[str, Any] | None, mode: str, data_hash: str, *, force: bool = False) -> bool:
+def should_send_morning_email(row: dict[str, Any] | None, data_hash: str, *, force: bool = False) -> bool:
     if force:
         return True
     if not row:
         return True
-    sent_at = row.get(f"{mode}_email_sent_at")
-    sent_hash = row.get(f"{mode}_data_hash")
+    sent_at = row.get("morning_email_sent_at")
+    sent_hash = row.get("morning_data_hash")
     if sent_at and sent_hash == data_hash:
         return False
     if sent_at:

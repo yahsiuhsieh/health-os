@@ -148,26 +148,23 @@ class SupabaseStorage:
         )
         return len(rows) if isinstance(rows, list) else 0
 
-    def mark_email_sent(
+    def mark_morning_email_sent(
         self,
         account_id: str,
         metric_date: date,
-        mode: str,
         data_hash: str,
         *,
         ai_provider: str | None = None,
         ai_model: str | None = None,
     ) -> None:
-        if mode not in {"morning", "evening"}:
-            raise ValueError(f"Unsupported email mode: {mode}")
         body = {
-            f"{mode}_email_sent_at": iso_or_none(utc_now()),
-            f"{mode}_data_hash": data_hash,
+            "morning_email_sent_at": iso_or_none(utc_now()),
+            "morning_data_hash": data_hash,
         }
         if ai_provider is not None:
-            body[f"{mode}_ai_provider"] = ai_provider
+            body["morning_ai_provider"] = ai_provider
         if ai_model is not None:
-            body[f"{mode}_ai_model"] = ai_model
+            body["morning_ai_model"] = ai_model
 
         try:
             self._request(
@@ -185,8 +182,8 @@ class SupabaseStorage:
                 "daily_health_metrics",
                 query=f"account_id=eq.{account_id}&metric_date=eq.{metric_date.isoformat()}",
                 json_body={
-                    f"{mode}_email_sent_at": body[f"{mode}_email_sent_at"],
-                    f"{mode}_data_hash": data_hash,
+                    "morning_email_sent_at": body["morning_email_sent_at"],
+                    "morning_data_hash": data_hash,
                 },
                 prefer="return=minimal",
             )

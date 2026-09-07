@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
-from typing import Literal
+from datetime import datetime, timedelta
 
 from healthos.coach import (
     COACH_INSTRUCTIONS,
@@ -15,11 +14,9 @@ from healthos.http_client import JsonHttpClient
 from healthos.models import DailyMetric
 from healthos.openai_client import AIClient
 from healthos.report import render_email_report
-from healthos.rollup import attach_baselines, should_send_email
+from healthos.rollup import attach_baselines, should_send_morning_email
 from healthos.storage import SupabaseStorage
 from healthos.sync import HealthSyncService
-
-SummaryMode = Literal["morning", "evening"]
 
 
 class HealthOSJob:
@@ -58,43 +55,45 @@ class HealthOSJob:
             emailer=EmailSender(settings, http=http, oauth=oauth),
         )
 
-    def run(self, *, mode: str = "auto", days: int | None = None, force: bool = False) -> str:
+    def run(self, *, days: int | None = None, force: bool = False) -> str:
         self.settings.validate_ai()
         self.settings.validate_email()
-        resolved_mode = infer_summary_mode(datetime.now(self.settings.timezone)) if mode == "auto" else mode
-        if resolved_mode not in {"morning", "evening"}:
-            raise ValueError("mode must be auto, morning, or evening")
-        sync_days = days if days is not None else (3 if resolved_mode == "morning" else 2)
-        result = self.sync_service.sync_recent_days(
-            sync_days,
-            include_partial=resolved_mode == "evening",
-        )
-        target_date = self._target_date(resolved_mode, result.end_date)
-        current_row = self.storage.get_daily_metric(result.account.id, target_date)
-        if current_row is None:
-            raise RuntimeError(f"No daily metrics found for {target_date.isoformat()}")
+        sync_days = days if days is not None else 3
+        if sync_days < 2:
+            raise ValueError("days must be at least 2 for the morning report")
+        result = self.sync_service.sync_recent_days(sync_days)
+        report_date = result.end_date - timedelta(days=1)
+        activity_date = report_date - timedelta(days=1)
+        sleep_recovery_row = self.storage.get_daily_metric(result.account.id, report_date)
+        activity_row = self.storage.get_daily_metric(result.account.id, activity_date)
+        if sleep_recovery_row is None:
+            raise RuntimeError(f"No daily metrics found for {report_date.isoformat()}")
+        if activity_row is None:
+            raise RuntimeError(f"No daily metrics found for {activity_date.isoformat()}")
 
         history = self.storage.list_daily_metrics(
             result.account.id,
-            target_date - timedelta(days=28),
-            target_date - timedelta(days=1),
+            report_date - timedelta(days=29),
+            report_date - timedelta(days=1),
         )
-        metric = DailyMetric.from_row(current_row)
-        attach_baselines(metric, history)
-        metric_row = metric.to_row(result.account.id)
-        self.storage.upsert_daily_metric_row(metric_row)
+        sleep_recovery_metric = attach_baselines(DailyMetric.from_row(sleep_recovery_row), history)
+        activity_metric = attach_baselines(DailyMetric.from_row(activity_row), history)
+        sleep_recovery_row = sleep_recovery_metric.to_row(result.account.id)
+        activity_row = activity_metric.to_row(result.account.id)
+        self.storage.upsert_daily_metric_row(sleep_recovery_row)
+        self.storage.upsert_daily_metric_row(activity_row)
 
-        payload = build_prompt_payload(resolved_mode, metric_row)
+        payload = build_prompt_payload(report_date, sleep_recovery_row, activity_row)
         data_hash = payload_hash(payload)
-        refreshed_row = self.storage.get_daily_metric(result.account.id, target_date)
-        if not should_send_email(refreshed_row, resolved_mode, data_hash, force=force):
-            return f"Skipped {resolved_mode} email for {target_date.isoformat()}; already sent."
+        refreshed_row = self.storage.get_daily_metric(result.account.id, report_date)
+        if not should_send_morning_email(refreshed_row, data_hash, force=force):
+            return f"Skipped morning email for {report_date.isoformat()}; already sent."
 
         generation = self.ai.generate_draft(payload, instructions=COACH_INSTRUCTIONS)
         report = render_email_report(
-            mode=resolved_mode,
-            metric_date=target_date,
-            metric_row=metric_row,
+            report_date=report_date,
+            sleep_recovery_row=sleep_recovery_row,
+            activity_row=activity_row,
             draft=generation.draft,
         )
         self.emailer.send(
@@ -102,18 +101,17 @@ class HealthOSJob:
             body=report.text_body,
             html_body=report.html_body,
         )
-        self.storage.mark_email_sent(
+        self.storage.mark_morning_email_sent(
             result.account.id,
-            target_date,
-            resolved_mode,
+            report_date,
             data_hash,
             ai_provider=generation.provider,
             ai_model=generation.model,
         )
-        return f"Sent {resolved_mode} email for {target_date.isoformat()}."
+        return f"Sent morning email for {report_date.isoformat()}."
 
     def sync_only(self, *, days: int) -> str:
-        result = self.sync_service.sync_recent_days(days, include_partial=False)
+        result = self.sync_service.sync_recent_days(days)
         return (
             f"Synced {len(result.records)} records and {len(result.metrics)} daily metrics "
             f"from {result.start_date.isoformat()} to {result.end_date.isoformat()}."
@@ -134,15 +132,3 @@ class HealthOSJob:
             f"Deleted {deleted} raw health records before {cutoff_date.isoformat()}; "
             "daily metrics were not changed."
         )
-
-    def _target_date(self, mode: str, end_date: date) -> date:
-        today = end_date - timedelta(days=1)
-        if mode == "morning":
-            return today
-        return datetime.now(self.settings.timezone).date()
-
-
-def infer_summary_mode(now_local: datetime) -> SummaryMode:
-    if now_local.hour >= 17 or now_local.hour < 4:
-        return "evening"
-    return "morning"

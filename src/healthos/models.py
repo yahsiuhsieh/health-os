@@ -79,7 +79,6 @@ class DailyMetric:
     sedentary_minutes: float | None = None
     readiness_score: float | None = None
     strain_score: float | None = None
-    partial_day_as_of: datetime | None = None
     data_quality: dict[str, Any] = field(default_factory=dict)
     baseline_7d: dict[str, Any] = field(default_factory=dict)
     baseline_28d: dict[str, Any] = field(default_factory=dict)
@@ -114,7 +113,6 @@ class DailyMetric:
             "sedentary_minutes": self.sedentary_minutes,
             "readiness_score": self.readiness_score,
             "strain_score": self.strain_score,
-            "partial_day_as_of": iso_or_none(self.partial_day_as_of),
             "data_quality": self.data_quality,
             "baseline_7d": self.baseline_7d,
             "baseline_28d": self.baseline_28d,
@@ -125,7 +123,7 @@ class DailyMetric:
     def from_row(cls, row: dict[str, Any]) -> "DailyMetric":
         parsed_date = date.fromisoformat(str(row["metric_date"]))
         metric = cls(metric_date=parsed_date)
-        datetime_fields = {"sleep_start_at", "sleep_end_at", "partial_day_as_of"}
+        datetime_fields = {"sleep_start_at", "sleep_end_at"}
         for key in cls.__dataclass_fields__:
             if key == "metric_date" or key not in row:
                 continue

@@ -3,25 +3,24 @@ name: HealthOS
 on:
   workflow_dispatch:
     inputs:
-      mode:
-        description: "Run mode"
+      operation:
+        description: "Operation"
         required: true
-        default: "auto"
+        default: "daily"
         type: choice
         options:
-          - auto
-          - morning
-          - evening
+          - daily
           - weekly
   schedule:
-    # GitHub cron is UTC. These times target Chicago daylight time.
-    - cron: "0 12 * * *"
-    - cron: "0 2 * * *"
+    # GitHub cron is UTC: 09:00 Chicago daylight time, 08:00 standard time.
+    - cron: "0 14 * * *"
     - cron: "0 11 * * 0"
 
 jobs:
   daily-email:
-    if: github.event_name != 'schedule' || github.event.schedule != '0 11 * * 0'
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 14 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'daily')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -41,18 +40,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run HealthOS daily email
-        run: |
-          MODE="${{ github.event.inputs.mode || 'auto' }}"
-          if [ "$MODE" = "weekly" ]; then
-            PYTHONPATH=src python -m healthos sync --days 30
-            PYTHONPATH=src python -m healthos cleanup --raw-days 30
-          else
-            PYTHONPATH=src python -m healthos run --mode "$MODE"
-          fi
+      - name: Run HealthOS morning email
+        run: PYTHONPATH=src python -m healthos run
 
   weekly-reconciliation:
-    if: github.event_name == 'schedule' && github.event.schedule == '0 11 * * 0'
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 11 * * 0') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'weekly')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

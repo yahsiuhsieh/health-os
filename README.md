@@ -4,7 +4,7 @@ HealthOS is a Python-first personal health data pipeline:
 
 1. Poll Google Health API on a cloud schedule.
 2. Store only necessary raw/session records and daily rollups in Supabase.
-3. Generate a short AI health coach email twice per day.
+3. Generate one AI health coach email each morning.
 4. Keep Google Health / Fitbit as the UI.
 
 No frontend, no webhook server, and no stored AI summary history are included in v1.
@@ -26,6 +26,7 @@ Run these migrations in the Supabase SQL editor:
 ```text
 migrations/001_initial_schema.sql
 migrations/002_email_ai_metadata.sql
+migrations/003_morning_only_cleanup.sql
 ```
 
 Use the service role key for the scheduled job. Do not expose it in a frontend.
@@ -122,7 +123,7 @@ Both `.env.local` and `.env` are ignored by git.
 ### 6. Run a local email test
 
 ```bash
-PYTHONPATH=src AI_PROVIDER=rule_based python -m healthos run --mode morning --force
+PYTHONPATH=src AI_PROVIDER=rule_based python -m healthos run --force
 ```
 
 This sends a real Gmail API email, but uses the rule-based draft instead of calling an
@@ -131,7 +132,7 @@ external AI provider.
 To test the default OpenRouter provider:
 
 ```bash
-PYTHONPATH=src AI_PROVIDER=openrouter python -m healthos run --mode morning --force
+PYTHONPATH=src AI_PROVIDER=openrouter python -m healthos run --force
 ```
 
 ### 7. Run tests
@@ -144,9 +145,8 @@ PYTHONPATH=src python -m compileall src tests
 ## Commands
 
 ```bash
-python -m healthos run --mode auto
-python -m healthos run --mode morning
-python -m healthos run --mode evening
+python -m healthos run
+python -m healthos run --days 3 --force
 python -m healthos sync --days 30
 python -m healthos cleanup --raw-days 30
 python -m healthos oauth-url --redirect-uri http://127.0.0.1:8080/callback
@@ -161,13 +161,21 @@ short-term raw debug buffer and should be cleaned with `healthos cleanup --raw-d
 The cleanup command only deletes `health_records`; it does not delete
 `daily_health_metrics`.
 
-The email prompt receives daily metrics plus 7-day and 28-day baselines. It does not
-send full `health_records.raw_json` payloads to the AI provider.
+The morning email runs daily at `14:00 UTC`, which is 09:00 in Chicago during daylight
+saving time and 08:00 during standard time. GitHub Actions schedules use UTC and may
+start a few minutes after the configured time. `HEALTHOS_TIMEZONE` should remain
+`America/Chicago` so report dates align with this schedule.
+
+Each report combines two date windows: sleep and recovery data from the report date
+(the sleep that ended that morning), plus complete activity data from the previous
+calendar day. The email prompt receives both daily metrics with their 7-day and 28-day
+baselines. It does not send full `health_records.raw_json` payloads to the AI provider.
 
 Daily reports use a fixed renderer instead of letting the AI produce the email layout.
-The renderer shows top insight, key metrics, coach notes, and data quality. Sleep below
-180 minutes is labeled as low-confidence data, and missing HRV/resting heart
-rate/respiratory rate limits recovery confidence.
+The renderer shows today's focus, last night's sleep, yesterday's activity, recovery
+signals, today's actions, and data quality. Available metrics are compared with both
+7-day and 28-day baselines. Sleep below 180 minutes is labeled as low-confidence data,
+and missing HRV/resting heart rate/respiratory rate limits recovery confidence.
 
 Optional Google Health data types can be missing on a given device/account. By default,
 HealthOS skips a single unavailable data type and continues the run. Set

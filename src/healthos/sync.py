@@ -43,7 +43,7 @@ class HealthSyncService:
         self.health = health
         self.storage = storage
 
-    def sync_recent_days(self, days: int, *, include_partial: bool = False) -> SyncResult:
+    def sync_recent_days(self, days: int) -> SyncResult:
         self.settings.validate_sync()
         self.storage.mark_sync_started(self.settings.account_key)
         account: Account | None = None
@@ -62,8 +62,7 @@ class HealthSyncService:
                 start_date + timedelta(days=offset)
                 for offset in range((end_date - start_date).days)
             ]
-            partial_as_of = utc_now() if include_partial else None
-            metrics = RollupBuilder().build_for_dates(records, dates, partial_day_as_of=partial_as_of)
+            metrics = RollupBuilder().build_for_dates(records, dates)
             for metric in metrics:
                 self.storage.upsert_daily_metric(account.id, metric)
             self.storage.mark_sync_completed(account.id, "ok")

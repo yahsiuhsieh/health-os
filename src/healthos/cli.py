@@ -15,7 +15,6 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_parser = subparsers.add_parser("run", help="Sync data and send one coach email")
-    run_parser.add_argument("--mode", choices=["auto", "morning", "evening"], default="auto")
     run_parser.add_argument("--days", type=int)
     run_parser.add_argument("--force", action="store_true")
     run_parser.set_defaults(func=_run)
@@ -51,7 +50,6 @@ def main(argv: list[str] | None = None) -> int:
 def _run(args: argparse.Namespace) -> str:
     settings = Settings.from_env()
     return HealthOSJob.from_settings(settings).run(
-        mode=args.mode,
         days=args.days,
         force=args.force,
     )
