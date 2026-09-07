@@ -1,0 +1,76 @@
+name: HealthOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - morning
+          - evening
+          - weekly
+  schedule:
+    # GitHub cron is UTC. These pairs cover Chicago daylight and standard time.
+    - cron: "17 13,14 * * *"
+    - cron: "37 2,3 * * *"
+    - cron: "15 12 * * 0"
+
+jobs:
+  daily-email:
+    if: github.event_name != 'schedule' || github.event.schedule != '15 12 * * 0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AI_PROVIDER: ${{ vars.AI_PROVIDER || 'openrouter' }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openrouter/free' }}
+      AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS || '700' }}
+      HEALTHOS_TIMEZONE: ${{ vars.HEALTHOS_TIMEZONE || 'America/Chicago' }}
+      HEALTHOS_ACCOUNT_KEY: ${{ vars.HEALTHOS_ACCOUNT_KEY || 'personal' }}
+      GMAIL_FROM_EMAIL: ${{ secrets.GMAIL_FROM_EMAIL }}
+      SUMMARY_RECIPIENT_EMAIL: ${{ secrets.SUMMARY_RECIPIENT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run HealthOS daily email
+        run: |
+          MODE="${{ github.event.inputs.mode || 'auto' }}"
+          if [ "$MODE" = "weekly" ]; then
+            PYTHONPATH=src python -m healthos sync --days 30
+            PYTHONPATH=src python -m healthos cleanup --raw-days 30
+          else
+            PYTHONPATH=src python -m healthos run --mode "$MODE"
+          fi
+
+  weekly-reconciliation:
+    if: github.event_name == 'schedule' && github.event.schedule == '15 12 * * 0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      HEALTHOS_TIMEZONE: ${{ vars.HEALTHOS_TIMEZONE || 'America/Chicago' }}
+      HEALTHOS_ACCOUNT_KEY: ${{ vars.HEALTHOS_ACCOUNT_KEY || 'personal' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run HealthOS weekly reconciliation
+        run: |
+          PYTHONPATH=src python -m healthos sync --days 30
+          PYTHONPATH=src python -m healthos cleanup --raw-days 30

@@ -1,0 +1,24 @@
+[project]
+name = "healthos"
+version = "0.1.0"
+description = "Personal Google Health data sync and twice-daily AI coach email pipeline."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+healthos = "healthos.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
