@@ -14,14 +14,14 @@ on:
           - evening
           - weekly
   schedule:
-    # GitHub cron is UTC. These pairs cover Chicago daylight and standard time.
-    - cron: "17 13,14 * * *"
-    - cron: "37 2,3 * * *"
-    - cron: "15 12 * * 0"
+    # GitHub cron is UTC. These times target Chicago daylight time.
+    - cron: "0 12 * * *"
+    - cron: "0 2 * * *"
+    - cron: "0 11 * * 0"
 
 jobs:
   daily-email:
-    if: github.event_name != 'schedule' || github.event.schedule != '15 12 * * 0'
+    if: github.event_name != 'schedule' || github.event.schedule != '0 11 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -52,7 +52,7 @@ jobs:
           fi
 
   weekly-reconciliation:
-    if: github.event_name == 'schedule' && github.event.schedule == '15 12 * * 0'
+    if: github.event_name == 'schedule' && github.event.schedule == '0 11 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
